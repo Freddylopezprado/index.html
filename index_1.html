@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asistencia · Ópticas Unidas</title>
+<meta name="theme-color" content="#0b3a6e">
+<style>
+:root{--azul:#0b3a6e;--azul2:#1565c0;--verde:#1faa59;--amar:#f2a900;--rojo:#d64545;--gris:#64748b;--borde:#dbe2ea;--fondo:#eef2f7;--card:#fff;--texto:#0f172a}
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{background:var(--fondo);color:var(--texto);min-height:100vh;padding:16px;display:flex;justify-content:center}
+.wrap{width:100%;max-width:480px}
+header{background:var(--azul);color:#fff;border-radius:16px;padding:18px 20px;margin-bottom:14px}
+header .emp{font-size:12px;opacity:.8;letter-spacing:.08em;text-transform:uppercase}
+header h1{font-size:22px;margin-top:4px}
+.clock{font-size:42px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:10px}
+.date{font-size:14px;opacity:.85;text-transform:capitalize}
+.card{background:var(--card);border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 2px 10px rgba(15,23,42,.06)}
+.card h2{font-size:16px;margin-bottom:10px;color:var(--azul)}
+label{display:block;font-size:13px;font-weight:600;margin:12px 0 6px;color:#334155}
+input,select,textarea{width:100%;padding:12px;border:1px solid var(--borde);border-radius:10px;font-size:16px;background:#fff;color:var(--texto)}
+textarea{min-height:150px;font-size:14px}
+.row{display:flex;gap:10px}.row>div{flex:1}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.act{border:none;border-radius:14px;padding:16px 10px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;min-height:86px}
+.act small{display:block;font-weight:500;font-size:12px;opacity:.9;margin-top:4px}
+.a1{background:var(--verde)}.a2{background:var(--amar);color:#3a2a00}.a3{background:var(--azul2)}.a4{background:var(--rojo)}
+.act:disabled{opacity:.5;cursor:wait}
+.btn{border:none;border-radius:10px;padding:12px 14px;font-size:15px;font-weight:600;cursor:pointer;background:var(--azul);color:#fff}
+.btn.sec{background:#e2e8f0;color:var(--texto)}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.status{display:none;margin-top:12px;padding:12px;border-radius:10px;font-size:14px;line-height:1.4}
+.status.info{display:block;background:#e0f2fe;color:#075985}
+.status.ok{display:block;background:#dcfce7;color:#166534}
+.status.err{display:block;background:#fee2e2;color:#991b1b}
+.hist{margin-top:4px}
+.hist li{list-style:none;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:13px;color:#334155}
+.muted{font-size:12px;color:var(--gris);margin-top:6px;line-height:1.4}
+.check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;font-weight:500}
+.check input{width:20px;height:20px}
+#qrBox{text-align:center;margin-top:16px;display:none}
+#qrCanvas{width:100%;max-width:280px;border:1px solid var(--borde);border-radius:8px}
+.link{word-break:break-all;font-size:12px;color:var(--gris);margin-top:8px}
+.hidden{display:none}
+ol.steps{padding-left:18px;font-size:14px;line-height:1.6;color:#334155}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ================= MODO COLABORADOR ================= -->
+<div id="modoEmpleado" class="hidden">
+  <header>
+    <div class="emp" id="eEmpresa">Ópticas Unidas</div>
+    <h1 id="eSede">Sede</h1>
+    <div class="clock" id="eReloj">--:--:--</div>
+    <div class="date" id="eFecha"></div>
+  </header>
+
+  <div class="card">
+    <h2>Tus datos</h2>
+    <label for="eNombre">Nombre y apellido</label>
+    <input id="eNombre" placeholder="Ej. María González" autocomplete="name">
+    <label for="eCedula">Cédula (opcional)</label>
+    <input id="eCedula" inputmode="numeric" placeholder="Ej. 18.456.789">
+    <p class="muted">Se recuerdan en este teléfono para la próxima vez.</p>
+  </div>
+
+  <div class="card">
+    <h2>¿Qué vas a registrar?</h2>
+    <div class="acts">
+      <button class="act a1" data-mov="ENTRADA">🟢 Entrada<small>Inicio de jornada</small></button>
+      <button class="act a2" data-mov="SALIDA A ALMUERZO">🟡 Almuerzo<small>Salida</small></button>
+      <button class="act a3" data-mov="REGRESO DE ALMUERZO">🔵 Regreso<small>De almuerzo</small></button>
+      <button class="act a4" data-mov="SALIDA DE JORNADA">🔴 Salida<small>Fin de jornada</small></button>
+    </div>
+    <div id="eStatus" class="status"></div>
+    <p class="muted" id="eGpsNota"></p>
+  </div>
+
+  <div class="card">
+    <h2>Mis últimos registros (este teléfono)</h2>
+    <ul class="hist" id="eHist"><li>Sin registros aún.</li></ul>
+  </div>
+</div>
+
+<!-- ================= MODO ADMINISTRADOR ================= -->
+<div id="modoAdmin" class="hidden">
+  <header>
+    <div class="emp">Panel de administración</div>
+    <h1>Generador de QR de asistencia</h1>
+    <div class="date" style="margin-top:6px">Crea un QR por sede. El número de WhatsApp queda dentro del QR.</div>
+  </header>
+
+  <div class="card">
+    <h2>1 · Configuración de la sede</h2>
+    <label for="aEmpresa">Empresa</label>
+    <input id="aEmpresa" value="Ópticas Unidas">
+    <label for="aSede">Nombre de la sede</label>
+    <input id="aSede" placeholder="Ej. Los Teques – C.C. La Cascada">
+    <label for="aTel">WhatsApp que recibe los registros (con código de país)</label>
+    <input id="aTel" inputmode="tel" placeholder="Ej. 584141234567">
+    <label for="aUrl">Dirección pública de esta app</label>
+    <input id="aUrl" placeholder="https://tu-sitio.netlify.app/">
+    <p class="muted">Es la dirección donde alojaste este archivo. Se completa sola si abriste la app desde allí.</p>
+
+    <label class="check"><input type="checkbox" id="aGps" checked> Exigir que el colaborador esté físicamente en la sede (GPS)</label>
+    <div id="aGpsBox">
+      <div class="row">
+        <div><label for="aLat">Latitud</label><input id="aLat" inputmode="decimal" placeholder="10.3445"></div>
+        <div><label for="aLng">Longitud</label><input id="aLng" inputmode="decimal" placeholder="-67.0392"></div>
+      </div>
+      <div class="btns"><button class="btn sec" id="aUbic" type="button">📍 Usar mi ubicación actual</button></div>
+      <p class="muted">Consejo: párate en la entrada de la sede y pulsa este botón.</p>
+      <label for="aRadio">Radio permitido (metros)</label>
+      <input id="aRadio" type="number" value="150" min="20">
+    </div>
+
+    <label for="aClave">Clave de verificación</label>
+    <input id="aClave">
+    <p class="muted">Sirve para detectar mensajes editados. Usa la misma clave en todas las sedes y guárdala.</p>
+
+    <div class="btns"><button class="btn" id="aGenerar" type="button">Generar QR</button></div>
+    <div id="aStatus" class="status"></div>
+
+    <div id="qrBox">
+      <canvas id="qrCanvas" width="1000" height="1000"></canvas>
+      <div class="link" id="aLink"></div>
+      <div class="btns" style="justify-content:center">
+        <button class="btn" id="aDescQR" type="button">⬇️ Descargar QR</button>
+        <button class="btn" id="aDescCartel" type="button">🖨️ Descargar cartel</button>
+        <button class="btn sec" id="aProbar" type="button">Probar</button>
+        <button class="btn sec" id="aCopiar" type="button">Copiar enlace</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2 · Verificar un registro</h2>
+    <p class="muted">Pega un mensaje recibido por WhatsApp para confirmar que no fue modificado.</p>
+    <label for="vTexto">Mensaje</label>
+    <textarea id="vTexto" placeholder="Pega aquí el mensaje completo…"></textarea>
+    <label for="vClave">Clave de verificación</label>
+    <input id="vClave">
+    <div class="btns"><button class="btn" id="vBtn" type="button">Verificar</button></div>
+    <div id="vStatus" class="status"></div>
+  </div>
+
+  <div class="card">
+    <h2>3 · Reporte de asistencia en Excel</h2>
+    <p class="muted">En WhatsApp abre el chat donde llegan los registros → menú (⋮ o el nombre del chat) → <b>Exportar chat → Sin archivos</b>. Carga aquí el .txt (Android) o el .zip (iPhone).</p>
+    <label for="rArchivo">Chat exportado</label>
+    <input type="file" id="rArchivo" accept=".txt,.zip,text/plain,application/zip">
+    <div class="row">
+      <div><label for="rEntrada">Hora oficial de entrada</label><input id="rEntrada" type="time" value="08:30"></div>
+      <div><label for="rTol">Tolerancia (min)</label><input id="rTol" type="number" value="10" min="0"></div>
+    </div>
+    <label for="rMes">Mes del reporte</label>
+    <select id="rMes"><option value="">Todos los meses</option></select>
+    <p class="muted">Usa la clave de verificación de la sección 1 para marcar registros alterados.</p>
+    <div class="btns"><button class="btn" id="rBtn" type="button" disabled>⬇️ Descargar Excel</button></div>
+    <div id="rStatus" class="status"></div>
+  </div>
+
+  <div class="card">
+    <h2>Cómo ponerlo en marcha</h2>
+    <ol class="steps">
+      <li>Aloja este archivo (index.html) en un sitio con https (Netlify Drop o GitHub Pages).</li>
+      <li>Abre esa dirección: verás este panel.</li>
+      <li>Genera un QR por sede y descarga el cartel.</li>
+      <li>Imprímelo y colócalo en la entrada de cada óptica.</li>
+    </ol>
+  </div>
+</div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+/* ---------- utilidades ---------- */
+const $ = id => document.getElementById(id);
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+};
+const pad = n => String(n).padStart(2,'0');
+function fechaHora(d){
+  return { fecha: `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`,
+           hora: `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}` };
+}
+function b64e(obj){
+  return btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function b64d(s){
+  s = s.replace(/-/g,'+').replace(/_/g,'/'); while (s.length % 4) s += '=';
+  return JSON.parse(decodeURIComponent(escape(atob(s))));
+}
+/* Firma corta (FNV-1a) para detectar ediciones del mensaje */
+function firma(texto){
+  let h = 0x811c9dc5;
+  for (const ch of texto){ h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
+  let h2 = h;
+  for (const ch of texto.split('').reverse().join('')){ h2 ^= ch.codePointAt(0); h2 = Math.imul(h2, 0x01000193) >>> 0; }
+  return (h.toString(36) + h2.toString(36)).toUpperCase().slice(-8);
+}
+function cadenaFirma(nombre, sede, mov, fecha, hora, clave){
+  return [nombre.trim().toLowerCase(), sede.trim().toLowerCase(), mov.trim(), fecha.trim(), hora.trim(), clave].join('|');
+}
+function distancia(lat1, lon1, lat2, lon2){
+  const R = 6371e3, rad = Math.PI/180;
+  const dLat = (lat2-lat1)*rad, dLon = (lon2-lon1)*rad;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin(dLon/2)**2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+}
+function estado(el, tipo, html){ el.className = 'status ' + tipo; el.innerHTML = html; }
+
+/* ---------- arranque ---------- */
+let cfg = null;
+const c = new URLSearchParams(location.search).get('c');
+if (c) { try { cfg = b64d(c); } catch(e) { cfg = null; } }
+
+if (cfg && cfg.n && cfg.s) iniciarEmpleado(cfg);
+else iniciarAdmin(!!c);
+
+/* ================= MODO COLABORADOR ================= */
+function iniciarEmpleado(cfg){
+  $('modoEmpleado').classList.remove('hidden');
+  document.title = 'Asistencia · ' + cfg.s;
+  $('eEmpresa').textContent = cfg.e || 'Ópticas Unidas';
+  $('eSede').textContent = cfg.s;
+
+  const tick = () => {
+    const d = new Date();
+    $('eReloj').textContent = fechaHora(d).hora;
+    $('eFecha').textContent = d.toLocaleDateString('es-VE', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  };
+  tick(); setInterval(tick, 1000);
+
+  $('eNombre').value = store.get('asis_nombre') || '';
+  $('eCedula').value = store.get('asis_cedula') || '';
+  const usaGps = Number(cfg.r) > 0 && cfg.lat != null && cfg.lng != null;
+  $('eGpsNota').textContent = usaGps
+    ? `📍 Esta sede exige GPS: debes estar a menos de ${cfg.r} m. Permite el acceso a tu ubicación cuando el teléfono lo pida.`
+    : '';
+  pintarHistorial();
+
+  document.querySelectorAll('.act').forEach(btn => btn.addEventListener('click', () => registrar(btn.dataset.mov)));
+
+  function bloquear(v){ document.querySelectorAll('.act').forEach(b => b.disabled = v); }
+
+  function registrar(mov){
+    const st = $('eStatus');
+    const nombre = $('eNombre').value.trim().replace(/\s+/g,' ');
+    const cedula = $('eCedula').value.trim();
+    if (nombre.length < 3){ estado(st,'err','Escribe tu nombre y apellido antes de registrar.'); $('eNombre').focus(); return; }
+    store.set('asis_nombre', nombre); store.set('asis_cedula', cedula);
+
+    if (!usaGps){ enviar(mov, nombre, cedula, null); return; }
+    if (!navigator.geolocation){ estado(st,'err','Este teléfono no permite obtener la ubicación.'); return; }
+
+    bloquear(true);
+    estado(st,'info','🛰️ Verificando tu ubicación…');
+    navigator.geolocation.getCurrentPosition(pos => {
+      const { latitude, longitude, accuracy } = pos.coords;
+      const dist = distancia(latitude, longitude, Number(cfg.lat), Number(cfg.lng));
+      bloquear(false);
+      if (dist > Number(cfg.r)){
+        estado(st,'err',`❌ Registro no permitido: estás a <b>${dist} m</b> de la sede (máximo ${cfg.r} m). Acércate a la entrada e intenta de nuevo.`);
+        return;
+      }
+      enviar(mov, nombre, cedula, { lat: latitude, lng: longitude, dist, prec: Math.round(accuracy) });
+    }, err => {
+      bloquear(false);
+      const msgs = {1:'Debes permitir el acceso a tu ubicación para registrar la asistencia.',
+                    2:'No hay señal de ubicación en este momento. Activa el GPS e intenta de nuevo.',
+                    3:'La ubicación tardó demasiado. Intenta de nuevo.'};
+      estado(st,'err','⚠️ ' + (msgs[err.code] || 'No se pudo obtener la ubicación.'));
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+  }
+
+  function enviar(mov, nombre, cedula, gps){
+    const st = $('eStatus');
+    const { fecha, hora } = fechaHora(new Date());
+    const codigo = firma(cadenaFirma(nombre, cfg.s, mov, fecha, hora, cfg.k || ''));
+    const lineas = [
+      '📋 *CONTROL DE ASISTENCIA*',
+      `*${cfg.e || 'Ópticas Unidas'}*`,
+      '',
+      `👤 *Colaborador:* ${nombre}`
+    ];
+    if (cedula) lineas.push(`🆔 *Cédula:* ${cedula}`);
+    lineas.push(
+      `🏢 *Sede:* ${cfg.s}`,
+      `📌 *Movimiento:* ${mov}`,
+      `📅 *Fecha:* ${fecha}`,
+      `⏰ *Hora:* ${hora}`
+    );
+    if (gps){
+      lineas.push(`📍 *GPS:* Validado a ${gps.dist} m (±${gps.prec} m)`,
+                  `🗺️ https://maps.google.com/?q=${gps.lat.toFixed(6)},${gps.lng.toFixed(6)}`);
+    }
+    lineas.push(`🔐 *Código:* ${codigo}`);
+
+    guardarHistorial(`${fecha} ${hora} · ${mov}`);
+    pintarHistorial();
+    estado(st,'ok',`✅ ${mov} lista a las ${hora}. Se abrirá WhatsApp: <b>pulsa Enviar</b> para completar el registro.`);
+
+    const url = `https://api.whatsapp.com/send?phone=${cfg.n}&text=${encodeURIComponent(lineas.join('\n'))}`;
+    setTimeout(() => { window.location.href = url; }, 700);
+  }
+
+  function guardarHistorial(t){
+    let h = []; try { h = JSON.parse(store.get('asis_hist') || '[]'); } catch(e){}
+    h.unshift(t); store.set('asis_hist', JSON.stringify(h.slice(0,10)));
+  }
+  function pintarHistorial(){
+    let h = []; try { h = JSON.parse(store.get('asis_hist') || '[]'); } catch(e){}
+    $('eHist').innerHTML = h.length ? h.map(x => `<li>${x}</li>`).join('') : '<li>Sin registros aún.</li>';
+  }
+}
+
+/* ================= MODO ADMINISTRADOR ================= */
+function iniciarAdmin(enlaceRoto){
+  $('modoAdmin').classList.remove('hidden');
+  if (enlaceRoto) estado($('aStatus'),'err','El enlace del QR está dañado o incompleto. Genera uno nuevo.');
+
+  const campos = ['aEmpresa','aSede','aTel','aUrl','aLat','aLng','aRadio','aClave'];
+  campos.forEach(id => { const v = store.get('adm_'+id); if (v) $(id).value = v; });
+  if (!$('aUrl').value && location.protocol.startsWith('http')) $('aUrl').value = location.origin + location.pathname;
+  if (!$('aClave').value){
+    const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let k = '';
+    for (let i=0;i<10;i++) k += abc[Math.floor(Math.random()*abc.length)];
+    $('aClave').value = k;
+  }
+  $('vClave').value = $('aClave').value;
+  const gpsGuardado = store.get('adm_aGps'); if (gpsGuardado !== null) $('aGps').checked = gpsGuardado === '1';
+  const toggleGps = () => $('aGpsBox').style.display = $('aGps').checked ? 'block' : 'none';
+  toggleGps(); $('aGps').addEventListener('change', toggleGps);
+
+  $('aUbic').addEventListener('click', () => {
+    const st = $('aStatus');
+    if (!navigator.geolocation){ estado(st,'err','Este dispositivo no permite obtener la ubicación.'); return; }
+    estado(st,'info','🛰️ Obteniendo ubicación…');
+    navigator.geolocation.getCurrentPosition(p => {
+      $('aLat').value = p.coords.latitude.toFixed(6);
+      $('aLng').value = p.coords.longitude.toFixed(6);
+      estado(st,'ok',`Ubicación tomada (precisión ±${Math.round(p.coords.accuracy)} m).`);
+    }, () => estado(st,'err','No se pudo obtener la ubicación. Escribe las coordenadas desde Google Maps.'),
+    { enableHighAccuracy:true, timeout:15000, maximumAge:0 });
+  });
+
+  let enlace = '', sedeActual = '', empresaActual = '';
+
+  $('aGenerar').addEventListener('click', () => {
+    const st = $('aStatus');
+    const tel = $('aTel').value.replace(/\D/g,'');
+    const sede = $('aSede').value.trim();
+    const base = $('aUrl').value.trim();
+    const gps = $('aGps').checked;
+    const lat = parseFloat($('aLat').value), lng = parseFloat($('aLng').value);
+    const radio = parseInt($('aRadio').value, 10);
+
+    if (!sede) return estado(st,'err','Escribe el nombre de la sede.');
+    if (tel.length < 10) return estado(st,'err','Escribe el WhatsApp con código de país, solo números (ej. 584141234567).');
+    if (!/^https:\/\//i.test(base)) return estado(st,'err','La dirección pública debe empezar por https:// (el GPS solo funciona en sitios seguros).');
+    if (gps && (isNaN(lat) || isNaN(lng))) return estado(st,'err','Indica latitud y longitud de la sede, o desactiva el GPS.');
+    if (gps && !(radio >= 20)) return estado(st,'err','El radio debe ser de al menos 20 metros.');
+
+    campos.forEach(id => store.set('adm_'+id, $(id).value));
+    store.set('adm_aGps', gps ? '1' : '0');
+    $('vClave').value = $('aClave').value;
+
+    const conf = { e: $('aEmpresa').value.trim() || 'Ópticas Unidas', s: sede, n: tel, k: $('aClave').value.trim() };
+    if (gps){ conf.lat = +lat.toFixed(6); conf.lng = +lng.toFixed(6); conf.r = radio; } else conf.r = 0;
+
+    enlace = base.split('?')[0].split('#')[0] + '?c=' + b64e(conf);
+    sedeActual = sede; empresaActual = conf.e;
+
+    if (typeof qrcode === 'undefined') return estado(st,'err','No se pudo cargar el generador de QR. Revisa tu conexión a internet.');
+    dibujarQRSimple($('qrCanvas'), enlace);
+    $('aLink').textContent = enlace;
+    $('qrBox').style.display = 'block';
+    estado(st,'ok',`QR listo para <b>${sede}</b>. Pruébalo con tu teléfono antes de imprimir.`);
+  });
+
+  $('aDescQR').addEventListener('click', () => descargar($('qrCanvas'), `QR_Asistencia_${slug(sedeActual)}.png`));
+  $('aDescCartel').addEventListener('click', () => descargar(cartel(enlace, sedeActual, empresaActual), `Cartel_Asistencia_${slug(sedeActual)}.png`));
+  $('aProbar').addEventListener('click', () => window.open(enlace, '_blank'));
+  $('aCopiar').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(enlace); estado($('aStatus'),'ok','Enlace copiado.'); }
+    catch(e){ estado($('aStatus'),'info','Copia el enlace que aparece debajo del QR.'); }
+  });
+
+  $('vBtn').addEventListener('click', () => {
+    const st = $('vStatus'), t = $('vTexto').value;
+    const g = re => { const m = t.match(re); return m ? m[1].trim() : null; };
+    const nombre = g(/\*?Colaborador:\*?\s*(.+)/), sede = g(/\*?Sede:\*?\s*(.+)/), mov = g(/\*?Movimiento:\*?\s*(.+)/),
+          fecha = g(/\*?Fecha:\*?\s*(.+)/), hora = g(/\*?Hora:\*?\s*(.+)/), cod = g(/\*?C[óo]digo:\*?\s*([A-Z0-9]+)/);
+    if (!nombre || !sede || !mov || !fecha || !hora || !cod) return estado(st,'err','No encontré todos los datos. Pega el mensaje completo tal como llegó.');
+    const esperado = firma(cadenaFirma(nombre, sede, mov, fecha, hora, $('vClave').value.trim()));
+    if (esperado === cod) estado(st,'ok',`✅ <b>Registro auténtico.</b><br>${nombre} · ${mov}<br>${sede} · ${fecha} ${hora}`);
+    else estado(st,'err',`❌ <b>El mensaje fue modificado</b> o la clave no coincide.<br>Datos leídos: ${nombre} · ${mov} · ${fecha} ${hora}`);
+  });
+
+  /* ----- Reporte Excel desde el chat exportado ----- */
+  let registrosChat = [];
+  $('rArchivo').addEventListener('change', async e => {
+    const st = $('rStatus'), f = e.target.files[0];
+    $('rBtn').disabled = true;
+    if (!f) return;
+    try {
+      estado(st,'info','Leyendo el chat…');
+      let texto;
+      if (/\.zip$/i.test(f.name)){
+        if (typeof JSZip === 'undefined') return estado(st,'err','No se pudo cargar el lector de .zip. Revisa tu conexión.');
+        const zip = await JSZip.loadAsync(f);
+        const txt = Object.values(zip.files).find(z => /\.txt$/i.test(z.name));
+        if (!txt) return estado(st,'err','El .zip no contiene el archivo de texto del chat.');
+        texto = await txt.async('string');
+      } else texto = await f.text();
+
+      registrosChat = parsearChat(texto, $('aClave').value.trim());
+      if (!registrosChat.length) return estado(st,'err','No encontré registros de asistencia en este chat. ¿Exportaste el chat correcto?');
+      const meses = [...new Set(registrosChat.map(r => r.mes))].sort((a,b) => claveMes(b).localeCompare(claveMes(a)));
+      $('rMes').innerHTML = '<option value="">Todos los meses</option>' + meses.map(m => `<option value="${m}">${nombreMes(m)}</option>`).join('');
+      $('rMes').value = meses[0];
+      const personas = new Set(registrosChat.map(r => r.clave)).size;
+      const alterados = registrosChat.filter(r => r.verif === 'ALTERADO').length;
+      estado(st, alterados ? 'err' : 'ok',
+        `✅ ${registrosChat.length} registros de ${personas} colaboradores.` +
+        (alterados ? `<br>⚠️ ${alterados} registros no pasan la verificación (se marcan en el Excel).` : ''));
+      $('rBtn').disabled = false;
+    } catch(err){ estado(st,'err','No se pudo leer el archivo: ' + err.message); }
+  });
+
+  $('rBtn').addEventListener('click', () => {
+    const st = $('rStatus');
+    if (typeof XLSX === 'undefined') return estado(st,'err','No se pudo cargar el generador de Excel. Revisa tu conexión.');
+    const mes = $('rMes').value;
+    const regs = mes ? registrosChat.filter(r => r.mes === mes) : registrosChat;
+    const rep = construirReporte(regs, $('rEntrada').value || '08:30', parseInt($('rTol').value,10) || 0);
+    const wb = XLSX.utils.book_new();
+    agregarHoja(wb, 'Resumen', rep.resumen);
+    agregarHoja(wb, 'Jornadas', rep.jornadas);
+    agregarHoja(wb, 'Detalle', rep.detalle);
+    const sufijo = mes ? claveMes(mes) : 'completo';
+    XLSX.writeFile(wb, `Asistencia_${slug($('aEmpresa').value || 'Opticas_Unidas')}_${sufijo}.xlsx`);
+    estado(st,'ok',`Excel generado: ${rep.resumen.length - 1} colaboradores, ${rep.jornadas.length - 1} jornadas.`);
+  });
+}
+
+/* ---------- lectura del chat y armado del reporte ---------- */
+const MOV_SALIDA = ['SALIDA DE JORNADA','SALIDA DEFINITIVA'];
+function claveMes(m){ const [mm,yy] = m.split('/'); return `${yy}-${mm}`; }
+function nombreMes(m){
+  const [mm,yy] = m.split('/');
+  const n = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][+mm-1];
+  return `${n} ${yy}`;
+}
+function sinAcentos(t){ return t.normalize('NFD').replace(/[̀-ͯ]/g,''); }
+function aMin(h){ if (!h) return null; const p = h.split(':').map(Number); return p[0]*60 + p[1] + (p[2]||0)/60; }
+function hhmm(min){ if (min == null || isNaN(min)) return ''; const m = Math.round(min); return `${pad(Math.floor(m/60))}:${pad(m%60)}`; }
+
+function parsearChat(texto, clave){
+  const t = texto.replace(/[‎‏‪-‮⁦-⁩]/g,'').replace(/\r/g,'');
+  const partes = t.split(/CONTROL DE ASISTENCIA/).slice(1);
+  const out = [], vistos = new Set();
+  for (let p of partes){
+    const fin = p.match(/C[óo]digo:\*?\s*[A-Z0-9]+/);
+    p = fin ? p.slice(0, fin.index + fin[0].length) : p.split('\n').slice(0,14).join('\n');
+    const g = re => { const m = p.match(re); return m ? m[1].replace(/\*/g,'').trim() : ''; };
+    const nombre = g(/Colaborador:\*?\s*([^\n]+)/).replace(/\s+/g,' '),
+          sede   = g(/Sede:\*?\s*([^\n]+)/),
+          mov    = g(/Movimiento:\*?\s*([^\n]+)/).toUpperCase(),
+          fecha  = g(/Fecha:\*?\s*(\d{2}\/\d{2}\/\d{4})/),
+          hora   = g(/Hora:\*?\s*(\d{2}:\d{2}:\d{2})/),
+          cedula = g(/C[ée]dula:\*?\s*([^\n]+)/),
+          dist   = g(/GPS:\*?\s*Validado a (\d+)/),
+          cod    = g(/C[óo]digo:\*?\s*([A-Z0-9]+)/);
+    if (!nombre || !mov || !fecha || !hora) continue;
+    const id = [nombre.toLowerCase(), mov, fecha, hora].join('|');
+    if (vistos.has(id)) continue;
+    vistos.add(id);
+    let verif = 'Sin código';
+    if (cod) verif = clave ? (firma(cadenaFirma(nombre, sede, mov, fecha, hora, clave)) === cod ? 'Auténtico' : 'ALTERADO') : 'Sin clave';
+    const ced = cedula.replace(/\D/g,'');
+    out.push({ nombre, cedula, sede, mov, fecha, hora, dist: dist ? +dist : '', cod, verif,
+               mes: fecha.slice(3), orden: fecha.split('/').reverse().join('-') + ' ' + hora,
+               clave: ced || sinAcentos(nombre).toLowerCase() });
+  }
+  return out.sort((a,b) => a.orden.localeCompare(b.orden));
+}
+
+function construirReporte(regs, horaEntrada, tolerancia){
+  const oficial = aMin(horaEntrada);
+  const diaSem = f => { const [d,m,y] = f.split('/').map(Number); return ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][new Date(y,m-1,d).getDay()]; };
+
+  const detalle = [['Fecha','Día','Hora','Colaborador','Cédula','Sede','Movimiento','Distancia GPS (m)','Código','Verificación']];
+  regs.forEach(r => detalle.push([r.fecha, diaSem(r.fecha), r.hora, r.nombre, r.cedula, r.sede, r.mov, r.dist, r.cod, r.verif]));
+
+  // Agrupar por colaborador y día
+  const dias = new Map(), nombres = new Map();
+  regs.forEach(r => {
+    nombres.set(r.clave, { nombre: r.nombre, cedula: r.cedula || (nombres.get(r.clave) || {}).cedula || '' });
+    const k = r.clave + '|' + r.fecha;
+    if (!dias.has(k)) dias.set(k, { clave: r.clave, fecha: r.fecha, orden: r.orden.slice(0,10), sedes: new Set(), movs: {}, alterados: 0 });
+    const d = dias.get(k);
+    d.sedes.add(r.sede);
+    const m = MOV_SALIDA.includes(r.mov) ? 'SALIDA DE JORNADA' : r.mov;
+    (d.movs[m] = d.movs[m] || []).push(aMin(r.hora));
+    if (r.verif === 'ALTERADO') d.alterados++;
+  });
+
+  const jornadas = [['Fecha','Día','Colaborador','Cédula','Sede','Entrada','Salida almuerzo','Regreso almuerzo','Salida','Horas trabajadas','Horas (decimal)','Llegada tarde','Minutos de retraso','Observaciones']];
+  const acum = new Map();
+  [...dias.values()].sort((a,b) => (a.orden + nombres.get(a.clave).nombre).localeCompare(b.orden + nombres.get(b.clave).nombre)).forEach(d => {
+    const min = arr => arr && arr.length ? Math.min(...arr) : null, max = arr => arr && arr.length ? Math.max(...arr) : null;
+    const ent = min(d.movs['ENTRADA']), sa = min(d.movs['SALIDA A ALMUERZO']), ra = max(d.movs['REGRESO DE ALMUERZO']), sal = max(d.movs['SALIDA DE JORNADA']);
+    const obs = [];
+    let horas = null;
+    if (ent == null) obs.push('Sin entrada');
+    if (sal == null) obs.push('Sin salida');
+    if ((sa == null) !== (ra == null)) obs.push(sa == null ? 'Regreso sin salida a almuerzo' : 'Sin regreso de almuerzo');
+    if (ent != null && sal != null && sal > ent){
+      horas = sal - ent;
+      if (sa != null && ra != null && ra > sa) horas -= (ra - sa);
+    }
+    const tarde = ent != null && ent > oficial + tolerancia;
+    const retraso = tarde ? Math.round(ent - oficial) : 0;
+    if (d.alterados) obs.push(`${d.alterados} registro(s) alterado(s)`);
+    const p = nombres.get(d.clave);
+    jornadas.push([d.fecha, diaSem(d.fecha), p.nombre, p.cedula, [...d.sedes].join(', '), hhmm(ent), hhmm(sa), hhmm(ra), hhmm(sal),
+                   hhmm(horas), horas != null ? +(horas/60).toFixed(2) : '', tarde ? 'Sí' : (ent != null ? 'No' : ''), retraso || '', obs.join('; ')]);
+
+    if (!acum.has(d.clave)) acum.set(d.clave, { dias: 0, min: 0, diasHoras: 0, tardes: 0, retraso: 0, incompletas: 0, alterados: 0, sedes: new Set() });
+    const a = acum.get(d.clave);
+    if (ent != null) a.dias++;
+    if (horas != null){ a.min += horas; a.diasHoras++; }
+    if (tarde){ a.tardes++; a.retraso += retraso; }
+    if (obs.some(o => !/alterado/.test(o))) a.incompletas++;
+    a.alterados += d.alterados;
+    d.sedes.forEach(s => a.sedes.add(s));
+  });
+
+  const resumen = [['Colaborador','Cédula','Sede(s)','Días asistidos','Horas totales','Horas totales (decimal)','Promedio horas/día','Llegadas tarde','Minutos de retraso','Jornadas incompletas','Registros alterados']];
+  [...acum.entries()].sort((a,b) => nombres.get(a[0]).nombre.localeCompare(nombres.get(b[0]).nombre)).forEach(([k,a]) => {
+    const p = nombres.get(k);
+    resumen.push([p.nombre, p.cedula, [...a.sedes].join(', '), a.dias, hhmm(a.min), +(a.min/60).toFixed(2),
+                  a.diasHoras ? +(a.min/60/a.diasHoras).toFixed(2) : '', a.tardes, a.retraso, a.incompletas, a.alterados]);
+  });
+  return { detalle, jornadas, resumen };
+}
+
+function agregarHoja(wb, nombre, filas){
+  const ws = XLSX.utils.aoa_to_sheet(filas);
+  ws['!cols'] = filas[0].map((_, i) => ({ wch: Math.min(40, Math.max(10, ...filas.map(f => String(f[i] ?? '').length + 2))) }));
+  ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s:{r:0,c:0}, e:{r:filas.length-1, c:filas[0].length-1} }) };
+  ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+  XLSX.utils.book_append_sheet(wb, ws, nombre);
+}
+
+/* ---------- QR y cartel ---------- */
+function matrizQR(texto){
+  const qr = qrcode(0, 'M'); qr.addData(texto); qr.make();
+  return { n: qr.getModuleCount(), dark: (r,c) => qr.isDark(r,c) };
+}
+function pintarQR(ctx, m, x, y, size){
+  const total = m.n + 8, cell = size / total;
+  ctx.fillStyle = '#fff'; ctx.fillRect(x, y, size, size);
+  ctx.fillStyle = '#000';
+  for (let r=0; r<m.n; r++) for (let c=0; c<m.n; c++)
+    if (m.dark(r,c)) ctx.fillRect(Math.floor(x+(c+4)*cell), Math.floor(y+(r+4)*cell), Math.ceil(cell), Math.ceil(cell));
+}
+function dibujarQRSimple(canvas, texto){
+  const ctx = canvas.getContext('2d');
+  pintarQR(ctx, matrizQR(texto), 0, 0, canvas.width);
+}
+function cartel(texto, sede, empresa){
+  const W = 1240, H = 1754, cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = '#0b3a6e'; ctx.fillRect(0,0,W,300);
+  ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+  ctx.font = '600 44px system-ui, sans-serif'; ctx.fillText(empresa.toUpperCase(), W/2, 110);
+  ctx.font = 'bold 86px system-ui, sans-serif'; ctx.fillText('Registro de asistencia', W/2, 225);
+  ctx.fillStyle = '#0b3a6e'; ctx.font = 'bold 58px system-ui, sans-serif';
+  ctx.fillText(ajustar(ctx, sede, W-120), W/2, 410);
+  pintarQR(ctx, matrizQR(texto), (W-860)/2, 460, 860);
+  ctx.fillStyle = '#0f172a'; ctx.font = '500 40px system-ui, sans-serif';
+  ['1. Escanea el código con la cámara de tu teléfono',
+   '2. Toca tu movimiento: Entrada, Almuerzo o Salida',
+   '3. Pulsa ENVIAR en WhatsApp'].forEach((t,i) => ctx.fillText(t, W/2, 1420 + i*66));
+  ctx.fillStyle = '#64748b'; ctx.font = '36px system-ui, sans-serif';
+  ctx.fillText('Mantén activada la ubicación (GPS) de tu teléfono', W/2, 1680);
+  return cv;
+}
+function ajustar(ctx, t, max){
+  if (ctx.measureText(t).width <= max) return t;
+  while (t.length > 3 && ctx.measureText(t + '…').width > max) t = t.slice(0,-1);
+  return t + '…';
+}
+function slug(t){ return (t || 'sede').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w]+/g,'_').replace(/^_|_$/g,''); }
+function descargar(canvas, nombre){
+  canvas.toBlob(b => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b); a.download = nombre;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }, 'image/png');
+}
+</script>
+</body>
+</html>
